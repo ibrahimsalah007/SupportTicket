@@ -4,14 +4,10 @@ const ticketSchema = Mongoose.Schema({
     message:{
         type:String
         },
-    email:{
-        type:String
-    },
-    name:{
-        type:String
-    },
-    phoneNumber:{
-        type:String
+    user:{
+        name:String,
+        phoneNumber:String,
+        email:String
     },
     source:{
         type:String,

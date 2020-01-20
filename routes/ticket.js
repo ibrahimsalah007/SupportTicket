@@ -4,8 +4,52 @@ const Ticket = require('../models/Ticket')
 
 const router = express.Router();
 
-router.get('/', (req,res) =>{
-    res.json({success:true, message: 'Hello'});
+const escapeRegex = function (query) {
+    return query.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+}
+const searchQuery= function (query) {
+try {
+    //const { escapeRegex } = require('./queryFunctions')
+    let bearer = {}
+    for (var queryKey in query) {
+        if (query.hasOwnProperty(queryKey)) {
+            let queryValue = Object.values({ [query[queryKey]]: query[queryKey] }).toString()
+            regex = new RegExp(escapeRegex(queryValue), 'gi');
+            bearer[queryKey] = regex
+        }
+    }
+    
+    console.log(bearer)
+    
+    return bearer
+} catch (err) {
+    console.log(err)
+}
+}
+
+router.get('/', async (req,res) =>{
+try{
+    //console.log('body', req.body.search)
+    // const {sortBy, order} = req.query;
+    let {search, sortBy} = req.body;
+    if(search == undefined || search == null || search == '' || search == {})
+        search = {}
+    else
+        search = searchQuery(search)
+
+    if( !sortBy || sortBy.length < 1 || sortBy == undefined)
+        sortBy = {createdAt: -1}
+
+    const tickets = await Ticket.find(search)
+    .sort(sortBy);
+    if(tickets.length < 1)
+        return res.json({success:false, message: 'لا يوجد تذاكر'});
+    
+    res.json({success:true, message: tickets});
+}catch(err){
+    res.json({success:false, message: err.message});
+}
+
 })
 
 
@@ -26,15 +70,15 @@ router.post('/new', async (req,res) =>{
         if (req.user != undefined) {
             ticket.createdBy = req.user.role < 1 ? 'User' : 'Admin'
         }
-        ticket.message = 'Message';
-        ticket.email = 'test@test.com';
-        ticket.name = 'Tester';
-        ticket.phoneNumber = '01019093332';
-        ticket.source = 'Contact US';
+        ticket.message = message;
+        ticket.user.email = email;
+        ticket.user.name = name;
+        ticket.user.phoneNumber = phoneNumber;
+        ticket.source = source;
         await ticket.save()
         res.json({success:true, message: ticket});
     }catch(err){
-        res.json({success:false, message: err});
+        res.json({success:false, message: err.message});
     }
 })
 
