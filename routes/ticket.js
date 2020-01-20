@@ -30,8 +30,19 @@ try {
 router.get('/', async (req,res) =>{
 try{
     //console.log('body', req.body.search)
-    // const {sortBy, order} = req.query;
+    let {pageSize, pageNo, all} = req.query;
     let {search, sortBy} = req.body;
+
+    if (!pageSize || pageSize === undefined)
+            pageSize = 10;
+
+        if (!pageNo || pageNo === undefined)
+            pageNo = 1;
+
+        if (all !== undefined) {
+            pageSize = '';
+            pageNo = '';
+        }
     if(search == undefined || search == null || search == '' || search == {})
         search = {}
     else
@@ -41,11 +52,39 @@ try{
         sortBy = {createdAt: -1}
 
     const tickets = await Ticket.find(search)
-    .sort(sortBy);
-    if(tickets.length < 1)
-        return res.json({success:false, message: 'لا يوجد تذاكر'});
-    
-    res.json({success:true, message: tickets});
+    .sort(sortBy)
+    .skip(pageNo !== undefined ? (parseInt(pageNo) - 1) * parseInt(pageSize) : '')
+    .limit(pageSize ? parseInt(pageSize) : '')
+    .exec((err, tickets) => {
+        if (err)
+            return res.json({ success: false, message: err });
+        
+        if (!tickets || tickets.length < 1)
+            return res.json({ success: false, message: "No Tickets found." });
+
+        Ticket.find(search).countDocuments()
+        .exec((err, total) => {
+            console.log({
+                pageNo: all == undefined ? parseInt(pageNo) : 1,
+                pages: all == undefined ? Math.ceil(total / pageSize) : 1,
+                total,
+                currentTotal: all !== undefined || pageNo == Math.ceil(total / pageSize) ? total : pageNo * pageSize,
+                length: tickets.length
+
+            });
+            return res.json(
+                {
+                    success: true,
+                    message: tickets,
+                    pageNo: all == undefined ? parseInt(pageNo) : 1,
+                    pages: all == undefined ? Math.ceil(total / pageSize) : 1,
+                    total,
+                    currentTotal: all !== undefined || pageNo == Math.ceil(total / pageSize) ? total : pageNo * pageSize
+                }
+            )
+        });
+    });
+
 }catch(err){
     res.json({success:false, message: err.message});
 }
